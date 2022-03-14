@@ -49,8 +49,7 @@ python train.py --multiprocessing_distributed \
     --testset 'flickr' \
     --model_name 'vslnet' \
     --batch_size 128 \
-    --init_lr 0.0001 \
-    --epochs 20 
+    --init_lr 0.0001 
 ```
 
 
@@ -63,7 +62,6 @@ python test.py --test_data_path /path/to/Flickr-SoundNet/ \
     --output_path /path/to/visualization/output \
     --testset 'flickr' \
     --iou_thres 0.5
-
 ```
 
 
