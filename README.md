@@ -14,6 +14,8 @@ arXiv 2022.
 
 ## Environment
 
+To setup the environment, please simply run
+
 ```
 pip install -r requirements.txt
 ```
