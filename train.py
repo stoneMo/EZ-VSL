@@ -24,7 +24,7 @@ def get_arguments():
     parser.add_argument('--test_data_path', default='',type=str,help='Root directory path of test data')
     parser.add_argument('--test_gt_path',default='',type=str)
     parser.add_argument('--image_size',default=224,type=int,help='Height and width of inputs')
-    parser.add_argument('--batch_size', default=1, type=int, help='Batch Size')
+    parser.add_argument('--batch_size', default=128, type=int, help='Batch Size')
     parser.add_argument('--out_dim', default=512, type=int)
     parser.add_argument('--dilated', action='store_true')
     parser.add_argument('--tau', default=0.03, type=float, help='tau')
@@ -125,7 +125,7 @@ def main_worker(gpu, ngpus_per_node, args):
         model = VSLNet(args)
     else:
         raise ValueError
-        
+
     if args.freeze_vision:
         for m in model.imgnet.modules():
             if isinstance(m, nn.BatchNorm2d):
