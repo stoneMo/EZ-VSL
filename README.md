@@ -2,6 +2,7 @@
 
 Official Codebase or "Localizing Visual Sounds the Easy Way".
 
+EZ-VSL is a simple yet effective approach for Easy Visual Sound Localization, without relying on the construction of positive and/or negative regions during training.
 
 
 ## Environment
@@ -59,5 +60,20 @@ python test.py --test_data_path /path/to/Flickr-SoundNet/ \
 
 ```
 
+## Paper
+
+[**Localizing Visual Sounds the Easy Way**]()<br>
+Shentong Mo, Pedro Morgado<br>
+arXiv 2022.
+
+If you find this repository useful, please cite our paper:
+```
+@article{mo2022EZ-VSL,
+  title={Localizing Visual Sounds the Easy Way},
+  author={Mo, Shentong and Morgado, Pedro},
+  journal={arXiv preprint},
+  year={2022}
+}
+```
 
 
