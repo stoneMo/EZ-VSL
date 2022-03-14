@@ -37,7 +37,6 @@ Data can be downloaded from [Unheard](https://github.com/stoneMo/EZ-VSL/blob/mai
 
 ## Train & Test
 
-
 For training on our EZ-VSL, please run
 
 ```
