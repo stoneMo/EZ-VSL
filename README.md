@@ -68,7 +68,7 @@ arXiv 2022.
 
 If you find this repository useful, please cite our paper:
 ```
-@article{mo2022EZ-VSL,
+@article{mo2022EZVSL,
   title={Localizing Visual Sounds the Easy Way},
   author={Mo, Shentong and Morgado, Pedro},
   journal={arXiv preprint},
