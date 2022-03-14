@@ -60,7 +60,7 @@ python test.py --test_data_path /path/to/Flickr-SoundNet/ \
 
 ```
 
-## Paper
+## Citation
 
 [**Localizing Visual Sounds the Easy Way**]()<br>
 Shentong Mo, Pedro Morgado<br>
