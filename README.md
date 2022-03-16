@@ -38,6 +38,8 @@ Data can be downloaded from [Unheard](https://github.com/stoneMo/EZ-VSL/blob/mai
 
 ## Model Zoo
 
+We release several models pre-trained with EZ-VSL with the hope that other researchers might also benefit from them.
+
 | Method |    Train Set   |     Test Set    |     CIoU     |  AUC  | url | args |
 |:------:|:--------------:|:---------------:|:------------:|:-----:|:---:|:----:|
 | EZ-VSL |   Flickr 10k   | Flickr SoundNet |     81.93    | 62.58 | [model]() | [script]() |
