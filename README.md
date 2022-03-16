@@ -24,7 +24,6 @@ To setup the environment, please simply run
 pip install -r requirements.txt
 ```
 
-
 ## Datasets
 
 ###  Flickr-SoundNet
