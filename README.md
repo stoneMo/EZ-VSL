@@ -51,6 +51,9 @@ We release several models pre-trained with EZ-VSL with the hope that other resea
 | EZ-VSL |    Heard 110   |    Heard 110    |     37.25    | 38.97 | [model]() | [script]() |
 | EZ-VSL |    Heard 110   |   Unheard 110   |     39.57    | 39.60 | [model]() | [script]() |
 
+## Visualizations
+
+
 ## Train & Test
 
 For training on our EZ-VSL, please run
