@@ -91,6 +91,7 @@ python test.py --test_data_path /path/to/Flickr-SoundNet/ \
     --alpha 0.4
 ```
 
+## Citation
 
 If you find this repository useful, please cite our paper:
 ```
