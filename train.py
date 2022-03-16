@@ -1,51 +1,44 @@
-from torch.autograd import Variable
-from torch.utils.data import Dataset, DataLoader
-from utils import *
-from losses import *
-import numpy as np
-import json
-import argparse
-from model import VSLNet
-from datasets.dataloader import GetAudioVideoDataset_Train, GetAudioVideoDataset_Test
-
-from torch import multiprocessing as mp
-import random
 import os
+import argparse
 import builtins
-import torch.distributed as dist
 import time
+import numpy as np
+
+import torch
+import torch.nn.functional as F
+from torch import multiprocessing as mp
+import torch.distributed as dist
+
+import utils
+from model import EZVSL
+from datasets import get_train_dataset, get_test_dataset
 
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--trainset',default='vggss',type=str,help='testset,(flickr or vggss)') 
-    parser.add_argument('--testset',default='vggss',type=str,help='testset,(flickr or vggss)') 
-    parser.add_argument('--train_data_path', default='',type=str,help='Root directory path of train data')
-    parser.add_argument('--test_data_path', default='',type=str,help='Root directory path of test data')
-    parser.add_argument('--test_gt_path',default='',type=str)
-    parser.add_argument('--image_size',default=224,type=int,help='Height and width of inputs')
-    parser.add_argument('--batch_size', default=128, type=int, help='Batch Size')
+    parser.add_argument('--model_dir', type=str, default='./checkpoints', help='path to save trained model weights')
+    parser.add_argument('--experiment_name', type=str, default='ezvsl_vggss', help='experiment name (used for checkpointing and logging)')
+
+    # Data params
+    parser.add_argument('--trainset', default='vggss', type=str, help='trainset (flickr or vggss)')
+    parser.add_argument('--testset', default='vggss', type=str, help='testset,(flickr or vggss)')
+    parser.add_argument('--train_data_path', default='', type=str, help='Root directory path of train data')
+    parser.add_argument('--test_data_path', default='', type=str, help='Root directory path of test data')
+    parser.add_argument('--test_gt_path', default='', type=str)
+
+    # ez-vsl hyper-params
     parser.add_argument('--out_dim', default=512, type=int)
-    parser.add_argument('--dilated', action='store_true')
     parser.add_argument('--tau', default=0.03, type=float, help='tau')
 
     # training/evaluation parameters
-    parser.add_argument("--seed", type=int, default=12345, help="random seed")
-    parser.add_argument('--freeze_vision', action='store_true')
-    parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
-    parser.add_argument("--num_train_steps", type=int, default=None, help="number of training steps")
+    parser.add_argument("--epochs", type=int, default=20, help="number of epochs")
+    parser.add_argument('--batch_size', default=128, type=int, help='Batch Size')
     parser.add_argument("--init_lr", type=float, default=0.0001, help="initial learning rate")
-    parser.add_argument("--clip_norm", type=float, default=1.0, help="gradient clip norm")
-    parser.add_argument("--warmup_proportion", type=float, default=0.0, help="warmup proportion")
-    parser.add_argument("--eval_period", type=int, default=100, help="training loss and eval print period")
-    parser.add_argument('--pretrained_dir', type=str, default=None, help='path to pretrained model weights')
+    parser.add_argument("--seed", type=int, default=12345, help="random seed")
 
-    parser.add_argument('--model_dir', type=str, default='checkpoints', help='path to save trained model weights')
-    parser.add_argument('--model_name', type=str, default='vslnet', help='model type (vslnet)')
-    parser.add_argument('--suffix', type=str, default=None, help='set to the last `_xxx` in ckpt repo to eval results')
-
+    # Distributed params
     parser.add_argument('--workers', type=int, default=8)
-    parser.add_argument('--gpu', type=int, default=-1)
+    parser.add_argument('--gpu', type=int, default=None)
     parser.add_argument('--world_size', type=int, default=1)
     parser.add_argument('--rank', type=int, default=0)
     parser.add_argument('--node', type=str, default='localhost')
@@ -56,13 +49,8 @@ def get_arguments():
     return parser.parse_args()
 
 
-def main():
+def main(args):
     mp.set_start_method('spawn')
-
-    args = get_arguments()
-    if args.gpu == -1:
-        args.gpu = None
-    args.port = random.randint(10000, 20000)
     args.dist_url = f'tcp://{args.node}:{args.port}'
     print('Using url {}'.format(args.dist_url))
 
@@ -74,7 +62,6 @@ def main():
                  args=(ngpus_per_node, args))
 
     else:
-        # Simply call main_worker function
         main_worker(args.gpu, ngpus_per_node, args)
 
 
@@ -90,6 +77,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
 
+    # Setup distributed environment
     if args.multiprocessing_distributed:
         if args.dist_url == "env://" and args.rank == -1:
             args.rank = int(os.environ["RANK"])
@@ -101,39 +89,13 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
         torch.distributed.barrier()
 
-    # create model dir
-    home_dir = os.path.join(args.model_dir, args.trainset, '_'.join([args.model_name, "bs"+str(args.batch_size),
-                                                        "lr"+str(args.init_lr)]))
-    if args.freeze_vision:
-        home_dir += '_freezevision'
-    if args.out_dim != 512:
-        home_dir += f'_out{args.out_dim}'
-    if args.dilated:
-        home_dir += f'_dilated'
-    
-    if args.suffix is not None:
-        home_dir = home_dir + '_' + args.suffix
-    model_dir = os.path.join(home_dir, "model")
+    # Create model dir
+    model_dir = os.path.join(args.model_dir, args.experiment_name)
+    os.makedirs(model_dir, exist_ok=True)
+    utils.save_json(vars(args), os.path.join(model_dir, 'configs.json'), sort_keys=True, save_pretty=True)
 
-    if not os.path.exists(model_dir):
-        os.makedirs(model_dir, exist_ok=True)
-    
-    save_json(vars(args), os.path.join(model_dir, 'configs.json'), sort_keys=True, save_pretty=True)
-
-    # load model
-    if args.model_name == 'vslnet':
-        model = VSLNet(args)
-    else:
-        raise ValueError
-
-    if args.freeze_vision:
-        for m in model.imgnet.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                continue
-            for p in m.parameters():
-                p.requires_grad = False
-
-    print(model)
+    # Create model
+    model = EZVSL(args.tau, args.out_dim)
 
     if not torch.cuda.is_available():
         print('using CPU, this will be slow')
@@ -150,19 +112,22 @@ def main_worker(gpu, ngpus_per_node, args):
     elif args.gpu is not None:
         torch.cuda.set_device(args.gpu)
         model.cuda(args.gpu)
+    print(model)
 
-    if args.pretrained_dir:
-        checkpoint = torch.load(args.pretrained_dir)
-        model_dict = model.state_dict()
-        pretrained_dict = checkpoint['model_state_dict']
-        model_dict.update(pretrained_dict)
-        model.load_state_dict(model_dict)
-        if torch.cuda.is_available():
-            model.cuda()
-        print('load pretrained model.')
+    # Optimizer
+    optimizer, scheduler = utils.build_optimizer_and_scheduler_adam(model, args)
 
-    # dataloader
-    traindataset = GetAudioVideoDataset_Train(args)
+    # Resume if possible
+    start_epoch, best_cIoU, best_Auc = 0., 0., 0
+    if os.path.exists(os.path.join(model_dir, 'latest.pth')):
+        ckp = torch.load(os.path.join(model_dir, 'latest.pth'), map_location='cpu')
+        start_epoch, best_cIoU, best_Auc = ckp['epoch'], ckp['best_cIoU'], ckp['best_Auc']
+        model.load_state_dict(ckp['model'])
+        optimizer.load_state_dict(ckp['optimizer'])
+        print(f'loaded from {os.path.join(model_dir, "latest.pth")}')
+
+    # Dataloaders
+    traindataset = get_train_dataset(args)
     train_sampler = None
     if args.multiprocessing_distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(traindataset)
@@ -171,72 +136,51 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True,
         persistent_workers=args.workers > 0)
 
-    testdataset = GetAudioVideoDataset_Test(args)
+    testdataset = get_test_dataset(args)
     test_loader = torch.utils.data.DataLoader(
         testdataset, batch_size=1, shuffle=False,
         num_workers=args.workers, pin_memory=True, drop_last=True,
         persistent_workers=args.workers > 0)
     print("Loaded dataloader.")
 
-    # gt for vggss
-    if args.testset == 'vggss':
-        args.gt_all = {}
-        with open('metadata/vggss.json') as json_file:
-            annotations = json.load(json_file)
-        for annotation in annotations:
-            args.gt_all[annotation['file']] = annotation['bbox']
-
-    args.num_train_steps = len(train_loader) * args.epochs
-
-    # optimizer/scheduler
-    # optimizer, scheduler = build_optimizer_and_scheduler(model, args)      # use sgd
-    optimizer, scheduler = build_optimizer_and_scheduler_adam(model, args)
-
-    log_writer = open(os.path.join(model_dir, "log.txt"), mode="w", encoding="utf-8")
-    # tb_writer = SummaryWriter(logdir=os.path.join(home_dir, "summary_dir"))
-
-    start_epoch = 0
-    best_cIoU, best_Auc = 0., 0.
-    if os.path.exists(os.path.join(model_dir, 'latest.pth')):
-        ckp = torch.load(os.path.join(model_dir, 'latest.pth'), map_location='cpu')
-        start_epoch = ckp['epoch']
-        best_cIoU = ckp['best_cIoU']
-        best_Auc = ckp['best_Auc']
-        if torch.cuda.is_available():
-            model.load_state_dict(ckp['model'])
-        else:
-            model.load_state_dict({k.replace('module.', ''): ckp['model'][k] for k in ckp['model']})
-        optimizer.load_state_dict(ckp['optimizer'])
-        print(f'loaded from {os.path.join(model_dir, "latest.pth")}')
-
-    cIoU, auc = validate(test_loader, model, start_epoch, log_writer, None, args)
+    # =============================================================== #
+    # Training loop
+    cIoU, auc = validate(test_loader, model, args)
     print(f'cIoU (epoch {start_epoch}): {cIoU}')
     print(f'AUC (epoch {start_epoch}): {auc}')
     print(f'best_cIoU: {best_cIoU}')
     print(f'best_Auc: {best_Auc}')
 
     for epoch in range(start_epoch, args.epochs):
-        print(model_dir)
         if args.multiprocessing_distributed:
             train_loader.sampler.set_epoch(epoch)
-        train(train_loader, model, optimizer, epoch, log_writer, None, args)
 
-        cIoU, auc = validate(test_loader, model, epoch, log_writer, None, args)
-        if args.rank == 0:
-            torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict(), 'epoch': epoch+1, 'best_cIoU': best_cIoU, 'best_Auc': best_Auc}, os.path.join(model_dir, 'latest.pth'))
-        if cIoU >= best_cIoU:
-            best_cIoU = cIoU
-            best_Auc = auc
-            if args.rank == 0:
-                torch.save({'model': model.state_dict(), 'optimizer': optimizer.state_dict(), 'epoch': epoch+1, 'best_cIoU': best_cIoU, 'best_Auc': best_Auc}, os.path.join(model_dir, 'best.pth'))
+        # Train
+        train(train_loader, model, optimizer, epoch, args)
 
+        # Evaluate
+        cIoU, auc = validate(test_loader, model, args)
         print(f'cIoU (epoch {epoch+1}): {cIoU}')
         print(f'AUC (epoch {epoch+1}): {auc}')
         print(f'best_cIoU: {best_cIoU}')
         print(f'best_Auc: {best_Auc}')
 
+        # Checkpoint
+        if args.rank == 0:
+            ckp = {'model': model.state_dict(),
+                   'optimizer': optimizer.state_dict(),
+                   'epoch': epoch+1,
+                   'best_cIoU': best_cIoU,
+                   'best_Auc': best_Auc}
+            torch.save(ckp, os.path.join(model_dir, 'latest.pth'))
+            print(f"Model saved to {model_dir}")
+        if cIoU >= best_cIoU:
+            best_cIoU, best_Auc = cIoU, auc
+            if args.rank == 0:
+                torch.save(ckp, os.path.join(model_dir, 'best.pth'))
 
-def train(train_loader, model, optimizer, epoch, log_writer, tb_writer, args):
+
+def train(train_loader, model, optimizer, epoch, args):
     model.train()
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
@@ -246,78 +190,51 @@ def train(train_loader, model, optimizer, epoch, log_writer, tb_writer, args):
         len(train_loader),
         [batch_time, data_time, loss_mtr],
         prefix="Epoch: [{}]".format(epoch),
-        fp=log_writer
     )
 
     end = time.time()
-    for i, (image, spec, audio, name) in enumerate(train_loader):
+    for i, (image, spec, _, _) in enumerate(train_loader):
         data_time.update(time.time() - end)
 
-        global_step = i + len(train_loader) * epoch
-
-        # print('%d / %d' % (i,len(train_loader) - 1))
         if args.gpu is not None:
             spec = spec.cuda(args.gpu, non_blocking=True)
             image = image.cuda(args.gpu, non_blocking=True)
-        # print("image:", image.shape, type(image))    # [bs, 3, 224, 224]
-        # print("im:", im.shape)                       # [bs, 256, 256, 3]
-        # print("spec:", spec.shape, type(spec))       # [bs, 1, 257, 925]
 
-        _, S, embed_img = model(image.float(), spec.float())
-
-        # print("logits:", logits.shape)        # [bs, 1+bs+1]
-       
-        loss = ce_loss(S)
+        loss, _ = model(image.float(), spec.float())
         loss_mtr.update(loss.item(), image.shape[0])
 
         optimizer.zero_grad()
         loss.backward()
-        
         optimizer.step()
 
-        torch.cuda.empty_cache()
         batch_time.update(time.time() - end)
         end = time.time()
 
         if i % 10 == 0 or i == len(train_loader) - 1:
-            if args.rank == 0:
-                progress.display(i)
+            progress.display(i)
         del loss
 
 
-def validate(test_loader, model, epoch, log_writer, tb_writer, args):
+def validate(test_loader, model, args):
     model.train(False)
-    iou = []
-    for step, (image, spec, audio, name) in enumerate(test_loader):
-        # print('%d / %d' % (step,len(test_loader) - 1))
+    evaluator = utils.Evaluator()
+    for step, (image, spec, bboxes, _) in enumerate(test_loader):
         if torch.cuda.is_available():
             spec = spec.cuda(args.gpu, non_blocking=True)
             image = image.cuda(args.gpu, non_blocking=True)
 
-        heatmap = model(image.float(), spec.float())[0]
-        heatmap = F.interpolate(heatmap, size=(224, 224), mode='bicubic', align_corners=False)
-        heatmap_arr = heatmap.data.cpu().numpy()
+        avl_map = model(image.float(), spec.float())[0]
+        avl_map = F.interpolate(avl_map, size=(224, 224), mode='bicubic', align_corners=False)
+        avl_map = avl_map.data.cpu().numpy()
 
         for i in range(spec.shape[0]):
-            gt_map, boxes = testset_gt(args, name[i])
-            pred = normalize_img(heatmap_arr[i, 0])
-            threshold = np.sort(pred.flatten())[int(pred.shape[0] * pred.shape[1] / 2)]
-            evaluator = Evaluator()
-            ciou, inter, union = evaluator.cal_CIOU(pred,gt_map,threshold)
-            iou.append(ciou)
+            pred = utils.normalize_img(avl_map[i, 0])
+            thr = np.sort(pred.flatten())[int(pred.shape[0] * pred.shape[1] / 2)]
+            evaluator.cal_CIOU(pred, bboxes['gt_map'], thr)
 
-    results = []
-    for i in range(21):
-        result = np.sum(np.array(iou) >= 0.05 * i)
-        result = result / len(iou)
-        results.append(result)
-    x = [0.05 * i for i in range(21)]
-    auc = metrics.auc(x, results)
-    cIoU = np.sum(np.array(iou) >= 0.5)/len(iou)
-    # print('cIoU',cIoU)
-    # print('auc',auc)
-
-    return cIoU, auc
+    cIoU = evaluator.finalize_AP50()
+    AUC = evaluator.finalize_AUC()
+    return cIoU, AUC
 
 
 class AverageMeter(object):
@@ -366,5 +283,5 @@ class ProgressMeter(object):
 
 
 if __name__ == "__main__":
-    main()
+    main(get_arguments())
 
