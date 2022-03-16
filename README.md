@@ -57,7 +57,9 @@ We release several models pre-trained with EZ-VSL with the hope that other resea
 
 ## Visualizations
 
-![My Image](images/visualization.png)
+<div align="center">
+  <img width="100%" alt="Visualizations" src="images/visualization.png">
+</div>
 
 
 ## Train & Test
