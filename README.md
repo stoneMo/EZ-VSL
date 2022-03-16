@@ -55,6 +55,7 @@ We release several models pre-trained with EZ-VSL with the hope that other resea
 
 ## Visualizations
 
+![My Image](images/visualization.png)
 
 
 ## Train & Test
