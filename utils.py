@@ -79,11 +79,11 @@ def save_json(data, filename, save_pretty=False, sort_keys=False):
         else:
             json.dump(data, f)
 
-def save_iou(iou_list, suffix, args):
+def save_iou(iou_list, suffix, output_dir):
     # sorted iou
     sorted_iou = np.sort(iou_list).tolist()
     sorted_iou_indices = np.argsort(iou_list).tolist()
-    file_iou = open(os.path.join(args.output_path,"iou_test_{}.txt".format(suffix)),"w")
+    file_iou = open(os.path.join(output_dir,"iou_test_{}.txt".format(suffix)),"w")
     for indice, value in zip(sorted_iou_indices, sorted_iou):
         line = str(indice) + ',' + str(value) + '\n'
         file_iou.write(line)

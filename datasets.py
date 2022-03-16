@@ -29,7 +29,7 @@ def load_spectrogram(path, dur=3.):
     if audio.shape[0] < samplerate * dur:
         n = int(samplerate * dur / audio.shape[0]) + 1
         audio = np.tile(audio, n)
-    audio = audio[:samplerate * dur]
+    audio = audio[:int(samplerate * dur)]
 
     frequencies, times, spectrogram = signal.spectrogram(audio, samplerate, nperseg=512, noverlap=274)
     spectrogram = np.log(spectrogram + 1e-7)
@@ -69,7 +69,7 @@ def bbox2gtmap(bboxes, format='flickr'):
     gt_map = np.zeros([224, 224])
     for xmin, ymin, xmax, ymax in bboxes:
         temp = np.zeros([224, 224])
-        temp[ymin:ymax, xmin:xmax] = 1
+        temp[int(ymin):int(ymax), int(xmin):int(xmax)] = 1
         gt_map += temp
 
     if format == 'flickr':
@@ -86,7 +86,7 @@ def bbox2gtmap(bboxes, format='flickr'):
 
 class AudioVisualDataset(Dataset):
     def __init__(self, image_files, audio_files, image_path, audio_path, audio_dur=3., image_transform=None, audio_transform=None, all_bboxes=None):
-        super(self).__init__()
+        super().__init__()
         self.audio_path = audio_path
         self.image_path = image_path
         self.audio_dur = audio_dur

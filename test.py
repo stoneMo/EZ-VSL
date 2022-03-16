@@ -102,7 +102,7 @@ def validate(testdataloader, audio_visual_model, object_saliency_model, viz_dir,
             image = image.cuda(args.gpu, non_blocking=True)
 
         # Compute S_AVL
-        heatmap_av = audio_visual_model(image.float(), spec.float())[0]
+        heatmap_av = audio_visual_model(image.float(), spec.float())[1].unsqueeze(1)
         heatmap_av = F.interpolate(heatmap_av, size=(224, 224), mode='bilinear', align_corners=True)
         heatmap_av = heatmap_av.data.cpu().numpy()
 
@@ -117,14 +117,16 @@ def validate(testdataloader, audio_visual_model, object_saliency_model, viz_dir,
             pred_obj = utils.normalize_img(heatmap_obj[i, 0])
             pred_av_obj = utils.normalize_img(pred_av * args.alpha + pred_obj * (1 - args.alpha))
 
+            gt_map = bboxes['gt_map'].data.cpu().numpy()
+
             thr_av = np.sort(pred_av.flatten())[int(pred_av.shape[0] * pred_av.shape[1] * 0.5)]
-            evaluator_av.cal_CIOU(pred_av, bboxes['gt_map'], thr_av)
+            evaluator_av.cal_CIOU(pred_av, gt_map, thr_av)
 
             thr_obj = np.sort(pred_obj.flatten())[int(pred_obj.shape[0] * pred_obj.shape[1] * 0.5)]
-            evaluator_obj.cal_CIOU(pred_obj, bboxes['gt_map'], thr_obj)
+            evaluator_obj.cal_CIOU(pred_obj, gt_map, thr_obj)
 
             thr_av_obj = np.sort(pred_av_obj.flatten())[int(pred_av_obj.shape[0] * pred_av_obj.shape[1] * 0.5)]
-            evaluator_av_obj.cal_CIOU(pred_av_obj, bboxes['gt_map'], thr_av_obj)
+            evaluator_av_obj.cal_CIOU(pred_av_obj, gt_map, thr_av_obj)
 
             if args.save_visualizations:
                 denorm_image = inverse_normalize(image).squeeze(0).permute(1, 2, 0).cpu().numpy()[:, :, ::-1]
@@ -163,9 +165,9 @@ def validate(testdataloader, audio_visual_model, object_saliency_model, viz_dir,
     print('Obj: AP50(cIoU)={}, Avg-cIoU={}, AUC={}'.format(*compute_stats(evaluator_obj)))
     print('AV_Obj: AP50(cIoU)={}, Avg-cIoU={}, AUC={}'.format(*compute_stats(evaluator_av_obj)))
 
-    utils.save_iou(evaluator_av.ciou, 'av', args)
-    utils.save_iou(evaluator_obj.ciou, 'obj', args)
-    utils.save_iou(evaluator_av_obj.ciou, 'av_obj', args)
+    utils.save_iou(evaluator_av.ciou, 'av', viz_dir)
+    utils.save_iou(evaluator_obj.ciou, 'obj', viz_dir)
+    utils.save_iou(evaluator_av_obj.ciou, 'av_obj', viz_dir)
 
 
 class NormReducer(nn.Module):

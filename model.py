@@ -37,11 +37,11 @@ class EZVSL(nn.Module):
 
     def max_xmil_loss(self, img, aud):
         B = img.shape[0]
-        logits = torch.einsum('nchw,mc->nmhw', img, aud) / self.tau
-        logits = logits.flatten(-2, -1).max(dim=-1)[0]
+        Slogits = torch.einsum('nchw,mc->nmhw', img, aud) / self.tau
+        logits = Slogits.flatten(-2, -1).max(dim=-1)[0]
         labels = torch.arange(B).long().to(img.device)
         loss = F.cross_entropy(logits, labels) + F.cross_entropy(logits.permute(1, 0), labels)
-        return loss, logits
+        return loss, Slogits
 
     def forward(self, image, audio):
         # Image

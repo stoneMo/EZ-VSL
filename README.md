@@ -46,14 +46,14 @@ We release several models pre-trained with EZ-VSL with the hope that other resea
 
 | Method |    Train Set   |     Test Set    |     CIoU     |  AUC  | url | args |
 |:------:|:--------------:|:---------------:|:------------:|:-----:|:---:|:----:|
-| EZ-VSL |   Flickr 10k   | Flickr SoundNet |     81.93    | 62.58 | [model]() | [script]() |
-| EZ-VSL |   Flickr 144k  | Flickr SoundNet |     83.13    | 63.06 | [model]() | [script]() |
-| EZ-VSL | VGG-Sound 144k | Flickr SoundNet |     83.94    | 63.60 | [model]() | [script]() |
-| EZ-VSL |  VGG-Sound 10k |      VGG-SS     |     37.18    | 38.75 | [model]() | [script]() |
-| EZ-VSL | VGG-Sound 144k |      VGG-SS     |     38.85    | 39.54 | [model]() | [script]() |
-| EZ-VSL | VGG-Sound Full |      VGG-SS     |     39.34    | 39.78 | [model]() | [script]() |
-| EZ-VSL |    Heard 110   |    Heard 110    |     37.25    | 38.97 | [model]() | [script]() |
-| EZ-VSL |    Heard 110   |   Unheard 110   |     39.57    | 39.60 | [model]() | [script]() |
+| EZ-VSL |   Flickr 10k   | Flickr SoundNet |     81.93    | 62.58 | [model](https://drive.google.com/drive/folders/1I9nyn8VGU4HFEBDpEUpqFz1ywWcqzC6C?usp=sharing) | [script](./scripts/test_flickr_with_flickr10k.sh) |
+| EZ-VSL |   Flickr 144k  | Flickr SoundNet |     83.13    | 63.06 | [model](https://drive.google.com/drive/folders/1I9nyn8VGU4HFEBDpEUpqFz1ywWcqzC6C?usp=sharing) | [script](./scripts/test_flickr_with_flickr144k.sh) |
+| EZ-VSL | VGG-Sound 144k | Flickr SoundNet |     83.94    | 63.60 | [model](https://drive.google.com/drive/folders/1I9nyn8VGU4HFEBDpEUpqFz1ywWcqzC6C?usp=sharing) | [script](./scripts/test_flickr_with_vggsound144k.sh) |
+| EZ-VSL |  VGG-Sound 10k |      VGG-SS     |     37.18    | 38.75 | [model](https://drive.google.com/drive/folders/1I9nyn8VGU4HFEBDpEUpqFz1ywWcqzC6C?usp=sharing) | [script](./scripts/test_vggss_with_vggsound10k.sh) |
+| EZ-VSL | VGG-Sound 144k |      VGG-SS     |     38.85    | 39.54 | [model](https://drive.google.com/drive/folders/1I9nyn8VGU4HFEBDpEUpqFz1ywWcqzC6C?usp=sharing) | [script](./scripts/test_vggss_with_vggsound144k.sh) |
+| EZ-VSL | VGG-Sound Full |      VGG-SS     |     39.34    | 39.78 | [model](https://drive.google.com/drive/folders/1I9nyn8VGU4HFEBDpEUpqFz1ywWcqzC6C?usp=sharing) | [script](./scripts/test_vggss_with_vggsoundfull.sh) |
+| EZ-VSL |    Heard 110   |    Heard 110    |     37.25    | 38.97 | [model](https://drive.google.com/drive/folders/1I9nyn8VGU4HFEBDpEUpqFz1ywWcqzC6C?usp=sharing) | [script](./scripts/test_heard_with_heard110.sh) |
+| EZ-VSL |    Heard 110   |   Unheard 110   |     39.57    | 39.60 | [model](https://drive.google.com/drive/folders/1I9nyn8VGU4HFEBDpEUpqFz1ywWcqzC6C?usp=sharing) | [script](./scripts/test_unheard_with_heard110.sh) |
 
 ## Visualizations
 
@@ -71,12 +71,12 @@ python train.py --multiprocessing_distributed \
     --train_data_path /path/to/Flickr-all/ \
     --test_data_path /path/to/Flickr-SoundNet/ \
     --test_gt_path /path/to/Flickr-SoundNet/Annotations/ \
-    --summaries_dir ./flickr \
-    --trainset 'flickr' \
+    --experiment_name flickr_10k \
+    --trainset 'flickr_10k' \
     --testset 'flickr' \
-    --model_name 'vslnet' \
+    --epochs 100 \
     --batch_size 128 \
-    --init_lr 0.0001 
+    --init_lr 0.0001
 ```
 
 
@@ -85,10 +85,11 @@ For testing and visualization, simply run
 ```
 python test.py --test_data_path /path/to/Flickr-SoundNet/ \
     --test_gt_path /path/to/Flickr-SoundNet/Annotations/ \
-    --summaries_dir /path/to/model/best.pth \
-    --output_path /path/to/visualization/output \
+    --model_dir checkpoints \
+    --experiment_name flickr_10k \
+    --save_visualizations \
     --testset 'flickr' \
-    --iou_thres 0.5
+    --alpha 0.4
 ```
 
 

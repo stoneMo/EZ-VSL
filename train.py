@@ -118,7 +118,7 @@ def main_worker(gpu, ngpus_per_node, args):
     optimizer, scheduler = utils.build_optimizer_and_scheduler_adam(model, args)
 
     # Resume if possible
-    start_epoch, best_cIoU, best_Auc = 0., 0., 0
+    start_epoch, best_cIoU, best_Auc = 0, 0., 0.
     if os.path.exists(os.path.join(model_dir, 'latest.pth')):
         ckp = torch.load(os.path.join(model_dir, 'latest.pth'), map_location='cpu')
         start_epoch, best_cIoU, best_Auc = ckp['epoch'], ckp['best_cIoU'], ckp['best_Auc']
@@ -133,13 +133,13 @@ def main_worker(gpu, ngpus_per_node, args):
         train_sampler = torch.utils.data.distributed.DistributedSampler(traindataset)
     train_loader = torch.utils.data.DataLoader(
         traindataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True,
+        num_workers=args.workers, pin_memory=False, sampler=train_sampler, drop_last=True,
         persistent_workers=args.workers > 0)
 
     testdataset = get_test_dataset(args)
     test_loader = torch.utils.data.DataLoader(
         testdataset, batch_size=1, shuffle=False,
-        num_workers=args.workers, pin_memory=True, drop_last=True,
+        num_workers=args.workers, pin_memory=False, drop_last=False,
         persistent_workers=args.workers > 0)
     print("Loaded dataloader.")
 
@@ -223,14 +223,15 @@ def validate(test_loader, model, args):
             spec = spec.cuda(args.gpu, non_blocking=True)
             image = image.cuda(args.gpu, non_blocking=True)
 
-        avl_map = model(image.float(), spec.float())[0]
+        avl_map = model(image.float(), spec.float())[1].unsqueeze(1)
         avl_map = F.interpolate(avl_map, size=(224, 224), mode='bicubic', align_corners=False)
         avl_map = avl_map.data.cpu().numpy()
 
         for i in range(spec.shape[0]):
             pred = utils.normalize_img(avl_map[i, 0])
+            gt_map = bboxes['gt_map'].data.cpu().numpy()
             thr = np.sort(pred.flatten())[int(pred.shape[0] * pred.shape[1] / 2)]
-            evaluator.cal_CIOU(pred, bboxes['gt_map'], thr)
+            evaluator.cal_CIOU(pred, gt_map, thr)
 
     cIoU = evaluator.finalize_AP50()
     AUC = evaluator.finalize_AUC()
