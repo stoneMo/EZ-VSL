@@ -4,6 +4,8 @@ Official Codebase or "Localizing Visual Sounds the Easy Way".
 
 EZ-VSL is a simple yet effective approach for Easy Visual Sound Localization, without relying on the construction of positive and/or negative regions during training.
 
+![My Image](images/framework.png)
+
 
 ## Paper
 
@@ -52,6 +54,7 @@ We release several models pre-trained with EZ-VSL with the hope that other resea
 | EZ-VSL |    Heard 110   |   Unheard 110   |     39.57    | 39.60 | [model]() | [script]() |
 
 ## Visualizations
+
 
 
 ## Train & Test
