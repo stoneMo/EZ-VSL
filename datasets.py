@@ -35,7 +35,6 @@ def load_spectrogram(path, dur=3.):
     spectrogram = np.log(spectrogram + 1e-7)
     return spectrogram
 
-
 def load_all_bboxes(annotation_dir, format='flickr'):
     gt_bboxes = {}
     if format == 'flickr':
@@ -59,7 +58,7 @@ def load_all_bboxes(annotation_dir, format='flickr'):
         with open('metadata/vggss.json') as json_file:
             annotations = json.load(json_file)
         for annotation in annotations:
-            bboxes = [np.clip(np.array(bbox), 0, 1) * 224 for bbox in annotation['bbox']]
+            bboxes = [(np.clip(np.array(bbox), 0, 1) * 224).astype(int) for bbox in annotation['bbox']]
             gt_bboxes[annotation['file']] = bboxes
 
     return gt_bboxes
@@ -69,7 +68,7 @@ def bbox2gtmap(bboxes, format='flickr'):
     gt_map = np.zeros([224, 224])
     for xmin, ymin, xmax, ymax in bboxes:
         temp = np.zeros([224, 224])
-        temp[int(ymin):int(ymax), int(xmin):int(xmax)] = 1
+        temp[ymin:ymax, xmin:xmax] = 1
         gt_map += temp
 
     if format == 'flickr':
@@ -85,7 +84,7 @@ def bbox2gtmap(bboxes, format='flickr'):
 
 
 class AudioVisualDataset(Dataset):
-    def __init__(self, image_files, audio_files, image_path, audio_path, audio_dur=3., image_transform=None, audio_transform=None, all_bboxes=None):
+    def __init__(self, image_files, audio_files, image_path, audio_path, audio_dur=3., image_transform=None, audio_transform=None, all_bboxes=None, bbox_format='flickr'):
         super().__init__()
         self.audio_path = audio_path
         self.image_path = image_path
@@ -94,6 +93,7 @@ class AudioVisualDataset(Dataset):
         self.audio_files = audio_files
         self.image_files = image_files
         self.all_bboxes = all_bboxes
+        self.bbox_format = bbox_format
 
         self.image_transform = image_transform
         self.audio_transform = audio_transform
@@ -113,7 +113,7 @@ class AudioVisualDataset(Dataset):
         bboxes = {}
         if self.all_bboxes is not None:
             bboxes['bboxes'] = self.all_bboxes[file_id]
-            bboxes['gt_map'] = bbox2gtmap(self.all_bboxes[file_id])
+            bboxes['gt_map'] = bbox2gtmap(self.all_bboxes[file_id], self.bbox_format)
 
         return frame, spectrogram, bboxes, file_id
 
@@ -223,7 +223,8 @@ def get_test_dataset(args):
         audio_dur=3.,
         image_transform=image_transform,
         audio_transform=audio_transform,
-        all_bboxes=all_bboxes
+        all_bboxes=all_bboxes,
+        bbox_format=bbox_format
     )
 
 
