@@ -1,19 +1,16 @@
 # Localizing Visual Sounds the Easy Way
 
-Official Codebase or "Localizing Visual Sounds the Easy Way".
-
-EZ-VSL is a simple yet effective approach for Easy Visual Sound Localization, without relying on the construction of positive and/or negative regions during training.
-
-<div align="center">
-  <img width="100%" alt="EZ-VSL Illustration" src="images/framework.png">
-</div>
-
-
-## Paper
+Official codebase for EZ-VSL. 
+EZ-VSL is a simple yet effective approach for Visual Sound Localization.
+Please check out the paper for full details. 
 
 [**Localizing Visual Sounds the Easy Way**]()<br>
 Shentong Mo, Pedro Morgado<br>
 arXiv 2022.
+
+<div align="center">
+  <img width="100%" alt="EZ-VSL Illustration" src="images/framework.png">
+</div>
 
 
 ## Environment
@@ -28,11 +25,11 @@ pip install -r requirements.txt
 
 ###  Flickr-SoundNet
 
-Data can be downloaded from [learning to localize sound source](https://github.com/ardasnck/learning_to_localize_sound_source)
+Data can be downloaded from [Learning to localize sound sources](https://github.com/ardasnck/learning_to_localize_sound_source)
 
 ###  VGG-Sound Source
 
-Data can be downloaded from [Localizing-Visual-Sounds-the-Hard-Way](https://github.com/hche11/Localizing-Visual-Sounds-the-Hard-Way)
+Data can be downloaded from [Localizing Visual Sounds the Hard Way](https://github.com/hche11/Localizing-Visual-Sounds-the-Hard-Way)
 
 ###  VGG-SS Unheard & Heard Test Data 
 
@@ -54,16 +51,10 @@ We release several models pre-trained with EZ-VSL with the hope that other resea
 | EZ-VSL |    Heard 110   |    Heard 110    |     37.25    | 38.97 | [model](https://drive.google.com/drive/folders/1I9nyn8VGU4HFEBDpEUpqFz1ywWcqzC6C?usp=sharing) | [script](./scripts/test_heard_with_heard110.sh) |
 | EZ-VSL |    Heard 110   |   Unheard 110   |     39.57    | 39.60 | [model](https://drive.google.com/drive/folders/1I9nyn8VGU4HFEBDpEUpqFz1ywWcqzC6C?usp=sharing) | [script](./scripts/test_unheard_with_heard110.sh) |
 
-## Visualizations
-
-<div align="center">
-  <img width="100%" alt="Visualizations" src="images/visualization.png">
-</div>
-
 
 ## Train & Test
 
-For training on our EZ-VSL, please run
+For training an EZ-VSL model, please run
 
 ```
 python train.py --multiprocessing_distributed \
@@ -78,7 +69,6 @@ python train.py --multiprocessing_distributed \
     --init_lr 0.0001
 ```
 
-
 For testing and visualization, simply run
 
 ```
@@ -90,6 +80,19 @@ python test.py --test_data_path /path/to/Flickr-SoundNet/ \
     --testset 'flickr' \
     --alpha 0.4
 ```
+
+The training script supports the following training sets: `flickr`, `flickr_10k`, `flickr_144k`, `vggss`, `vggss_10k`, `vggss_144k` or `vggss_heard`.
+
+For evaluation, it supports the following test sets: `flickr`, `vggss`, `vggss_heard`, `vggss_unheard`.
+
+## Visualizations
+
+The `test.py` script saves the predicted localization maps for all test images when the flag `--save_visualizations` is provided.
+All visualizations for OGL, AVL and EZ-VSL localization maps are saved under `{model_dir}/{experiment_name}/viz/`.
+Here's some examples.
+<div align="center">
+  <img width="100%" alt="Visualizations" src="images/visualization.png">
+</div>
 
 ## Citation
 
