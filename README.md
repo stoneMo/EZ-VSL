@@ -101,7 +101,7 @@ If you find this repository useful, please cite our paper:
 @article{mo2022EZVSL,
   title={Localizing Visual Sounds the Easy Way},
   author={Mo, Shentong and Morgado, Pedro},
-  journal={arXiv preprint:2203.09324},
+  journal={arXiv preprint arXiv:2203.09324},
   year={2022}
 }
 ```
