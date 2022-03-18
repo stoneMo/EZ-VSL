@@ -4,7 +4,7 @@ Official codebase for EZ-VSL.
 EZ-VSL is a simple yet effective approach for Visual Sound Localization.
 Please check out the paper for full details. 
 
-[**Localizing Visual Sounds the Easy Way**]()<br>
+[**Localizing Visual Sounds the Easy Way**](https://arxiv.org/abs/2203.09324)<br>
 Shentong Mo, Pedro Morgado<br>
 arXiv 2022.
 
@@ -101,7 +101,7 @@ If you find this repository useful, please cite our paper:
 @article{mo2022EZVSL,
   title={Localizing Visual Sounds the Easy Way},
   author={Mo, Shentong and Morgado, Pedro},
-  journal={arXiv preprint},
+  journal={arXiv preprint:2203.09324},
   year={2022}
 }
 ```
